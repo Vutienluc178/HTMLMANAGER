@@ -101,7 +101,7 @@
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Thẻ phân loại (Cách nhau bởi dấu phẩy)</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Thẻ phân loại thông minh (Tự động nhận diện)</label>
                             <div class="relative">
                                 <i class="fa-solid fa-tags absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                                 <input type="text" id="edit-tags" placeholder="VD: css, button, component" class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
@@ -601,16 +601,41 @@
                       .replace(/đ/g, 'd').replace(/Đ/g, 'D');
         }
 
-        // Xử lý khi nhập content: Cập nhật Live Preview và tự động bắt thẻ <title>
+        // Xử lý khi nhập content: Cập nhật Live Preview và trích xuất tag từ <title>
         function handleContentInput(e) {
             updateLivePreview();
             
             const content = els.editContent.value;
-            const titleMatch = content.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
             
+            // Lấy danh sách tag hiện tại để không bị trùng lặp
+            let currentTags = els.editTags.value.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+            const tagSet = new Set(currentTags);
+            let tagsUpdated = false;
+
+            // Tự động bắt thẻ <title> và chia nhỏ tạo tag
+            const titleMatch = content.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
             if (titleMatch && titleMatch[1]) {
-                const extractedTitle = removeVietnameseTones(titleMatch[1].trim());
+                const rawTitle = titleMatch[1].trim();
+                
+                // Cập nhật tiêu đề file (bỏ dấu tiếng Việt)
+                const extractedTitle = removeVietnameseTones(rawTitle);
                 els.editTitle.value = extractedTitle;
+
+                // Chia nhỏ title thành các tag dựa trên các dấu câu phân cách phổ biến
+                const titleParts = rawTitle.split(/[-.,|();:\[\]_]+/);
+                titleParts.forEach(part => {
+                    // Cắt khoảng trắng, bỏ dấu tiếng Việt và chuyển thành chữ thường cho Tag
+                    const cleanTag = removeVietnameseTones(part.trim()).toLowerCase();
+                    if (cleanTag && cleanTag.length > 0 && !tagSet.has(cleanTag)) {
+                        tagSet.add(cleanTag);
+                        tagsUpdated = true;
+                    }
+                });
+            }
+
+            // Tự động điền lại vào ô input nếu có tag mới
+            if (tagsUpdated) {
+                els.editTags.value = Array.from(tagSet).join(', ');
             }
         }
 
