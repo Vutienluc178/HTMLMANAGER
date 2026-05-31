@@ -594,6 +594,26 @@
             }
         }
 
+        // Hàm loại bỏ dấu tiếng Việt
+        function removeVietnameseTones(str) {
+            return str.normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g, '')
+                      .replace(/đ/g, 'd').replace(/Đ/g, 'D');
+        }
+
+        // Xử lý khi nhập content: Cập nhật Live Preview và tự động bắt thẻ <title>
+        function handleContentInput(e) {
+            updateLivePreview();
+            
+            const content = els.editContent.value;
+            const titleMatch = content.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+            
+            if (titleMatch && titleMatch[1]) {
+                const extractedTitle = removeVietnameseTones(titleMatch[1].trim());
+                els.editTitle.value = extractedTitle;
+            }
+        }
+
         function handleEditorTab(e) {
             if (e.key === 'Tab') {
                 e.preventDefault();
@@ -714,7 +734,7 @@
             document.getElementById('btn-export').addEventListener('click', handleExport);
             document.getElementById('input-import').addEventListener('change', handleImport);
             
-            els.editContent.addEventListener('input', updateLivePreview);
+            els.editContent.addEventListener('input', handleContentInput);
             els.editContent.addEventListener('keydown', handleEditorTab);
         }
 
