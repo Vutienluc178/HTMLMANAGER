@@ -4,790 +4,958 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartHTML Manager</title>
-    <!-- Thư viện Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Thư viện FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-
-        /* Tùy chỉnh thanh cuộn */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Hỗ trợ tab trong trình soạn thảo */
         .tab-size-2 { -moz-tab-size: 2; -o-tab-size: 2; tab-size: 2; }
 
-        /* 16:9 preview: fills available height, then constrains width */
-        .preview-16-9 {
-            width: 100%;
-            aspect-ratio: 16 / 9;
-            max-height: 100%;
-            border-radius: 6px;
-            overflow: hidden;
+        /* ── Preview frames ── */
+        .preview-desktop {
+            width: 100%; aspect-ratio: 16/9; max-height: 100%;
+            border-radius: 6px; overflow: hidden;
             box-shadow: 0 2px 16px rgba(0,0,0,0.18);
         }
+        .preview-tablet {
+            width: 768px; max-width: 100%; height: 520px;
+            border-radius: 14px; overflow: hidden;
+            border: 10px solid #334155;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.3);
+        }
+        .preview-mobile {
+            width: 375px; max-width: 100%; height: 580px;
+            border-radius: 36px; overflow: hidden;
+            border: 12px solid #1e293b;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.35);
+        }
+
+        /* ── Find highlight ── */
+        .find-active-btn { background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.15); color:#4f46e5; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 overflow-hidden">
 
-    <div id="app" class="flex h-screen w-full">
+<div id="app" class="flex h-screen w-full">
 
-        <!-- SIDEBAR -->
-        <div id="sidebar" class="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col transition-all z-20">
-            <div class="p-4 border-b border-slate-200 bg-white">
-                <div class="flex items-center gap-2 text-indigo-600 mb-4">
-                    <i class="fa-solid fa-layer-group text-xl"></i>
-                    <h1 class="font-bold text-lg">SmartHTML Hub</h1>
-                </div>
-                <!-- Thêm thông báo trạng thái Đồng bộ Đám mây -->
-                <div id="cloud-status" class="text-xs font-medium text-slate-500 flex justify-center mb-3 items-center gap-1 bg-slate-50 py-1 rounded-md border border-slate-100">
-                    <i class="fa-solid fa-rotate animate-spin text-indigo-400"></i> Đang kết nối mây...
-                </div>
-                <button id="btn-create-new" class="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors font-medium shadow-sm mb-3">
-                    <i class="fa-solid fa-plus text-sm"></i> Tạo file mới
+    <!-- ═══════════════ SIDEBAR ═══════════════ -->
+    <div id="sidebar" class="w-full md:w-72 bg-white border-r border-slate-200 flex flex-col z-20">
+        <div class="p-4 border-b border-slate-200">
+            <div class="flex items-center gap-2 text-indigo-600 mb-3">
+                <i class="fa-solid fa-layer-group text-xl"></i>
+                <h1 class="font-bold text-lg">SmartHTML Hub</h1>
+            </div>
+            <div id="cloud-status" class="text-xs font-medium flex justify-center mb-3 items-center gap-1 bg-slate-50 py-1 rounded-md border border-slate-100 text-slate-500">
+                <i class="fa-solid fa-rotate animate-spin text-indigo-400"></i> Đang kết nối mây...
+            </div>
+            <button id="btn-create-new" class="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors font-medium shadow-sm mb-3">
+                <i class="fa-solid fa-plus text-sm"></i> Tạo file mới
+            </button>
+            <div class="flex gap-2">
+                <button id="btn-export" class="flex-1 text-xs py-1.5 font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors" title="Xuất JSON">
+                    <i class="fa-solid fa-file-export"></i> Xuất D.liệu
                 </button>
-                <div class="flex gap-2">
-                    <button id="btn-export" class="flex-1 text-xs py-1.5 font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors tooltip" title="Sao lưu toàn bộ danh sách">
-                        <i class="fa-solid fa-file-export"></i> Xuất D.liệu
-                    </button>
-                    <label class="flex-1 text-center text-xs py-1.5 font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md cursor-pointer transition-colors tooltip" title="Khôi phục danh sách từ file">
-                        <i class="fa-solid fa-file-import"></i> Nhập D.liệu
-                        <input type="file" id="input-import" accept=".json" class="hidden">
-                    </label>
-                </div>
-            </div>
-
-            <div class="p-4 border-b border-slate-200 bg-slate-50/50">
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="search-input" placeholder="Tìm kiếm thông minh..." class="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
-                </div>
-            </div>
-
-            <div id="file-list-container" class="flex-1 overflow-y-auto p-2 space-y-1">
-                <!-- Danh sách file sẽ được render tại đây -->
+                <label class="flex-1 text-center text-xs py-1.5 font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md cursor-pointer transition-colors" title="Nhập JSON">
+                    <i class="fa-solid fa-file-import"></i> Nhập D.liệu
+                    <input type="file" id="input-import" accept=".json" class="hidden">
+                </label>
             </div>
         </div>
 
-        <!-- MAIN CONTENT -->
-        <div id="main-content" class="flex-1 flex flex-col bg-slate-50/50 hidden md:flex w-full">
-
-            <!-- VIEW: Chưa chọn file -->
-            <div id="view-empty" class="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 hidden">
-                <i class="fa-regular fa-folder-open text-6xl mb-4 text-indigo-200"></i>
-                <h2 class="text-xl font-medium text-slate-600 mb-2">Chưa có file nào được chọn</h2>
-                <p class="text-center max-w-sm mb-6">Chọn một file từ danh sách bên trái hoặc tạo file HTML mới để bắt đầu lưu trữ.</p>
-                <button id="btn-empty-create" class="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-2 px-4 rounded-lg transition-colors font-medium shadow-sm">
-                    <i class="fa-solid fa-plus text-sm"></i> Tạo file đầu tiên
-                </button>
-            </div>
-
-            <!-- VIEW: Chỉnh sửa / Tạo mới -->
-            <div id="view-edit" class="flex-1 flex flex-col h-full hidden">
-                <div class="p-4 border-b border-slate-200 bg-white flex items-center justify-between z-10 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <button id="btn-edit-back" class="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md md:hidden">
-                            <i class="fa-solid fa-arrow-left"></i>
-                        </button>
-                        <h2 id="edit-header-title" class="font-semibold text-lg">Tạo File Mới</h2>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button id="btn-cancel-edit" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Hủy</button>
-                        <button id="btn-save-file" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm">
-                            <i class="fa-regular fa-floppy-disk"></i> Lưu lại
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex-1 overflow-hidden p-3 md:p-4 flex flex-col">
-                    <div class="space-y-3 flex flex-col flex-1 min-h-0">
-                        <div class="flex gap-3">
-                            <div class="flex-1">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Tiêu đề file</label>
-                                <input type="text" id="edit-title" placeholder="VD: Mẫu Landing Page Sự kiện" class="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium" />
-                            </div>
-                            <div class="flex-1">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Thẻ phân loại (Tự động nhận diện)</label>
-                                <div class="relative">
-                                    <i class="fa-solid fa-tags absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                                    <input type="text" id="edit-tags" placeholder="VD: css, button, component" class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex-1 flex flex-col lg:flex-row gap-3 min-h-0">
-                            <!-- Cột Code -->
-                            <div class="flex flex-col lg:w-[38%] min-h-[220px] lg:min-h-0">
-                                <label class="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                                    <i class="fa-solid fa-code"></i> Mã nguồn HTML/CSS/JS
-                                </label>
-                                <textarea id="edit-content" spellcheck="false" placeholder="<!-- Nhập HTML, CSS hoặc JS của bạn vào đây -->" class="w-full flex-1 p-4 bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-slate-300 resize-none tab-size-2"></textarea>
-                            </div>
-
-                            <!-- Cột Live Preview 16:9 cực đại -->
-                            <div class="flex-1 flex flex-col hidden lg:flex min-h-0">
-                                <label class="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                                    <i class="fa-solid fa-bolt text-amber-500"></i> Xem trước trực tiếp
-                                    <span class="text-xs text-slate-400 font-normal">(16:9)</span>
-                                </label>
-                                <div class="flex-1 flex items-center justify-center bg-slate-100 rounded-lg overflow-hidden p-2 min-h-0">
-                                    <div class="preview-16-9">
-                                        <iframe id="live-preview-frame" class="w-full h-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: Chi tiết -->
-            <div id="view-detail" class="flex-1 flex flex-col h-full overflow-hidden hidden">
-                <div class="p-4 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm z-10">
-                    <div class="flex items-center gap-3 overflow-hidden">
-                        <button id="btn-detail-back" class="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md md:hidden shrink-0">
-                            <i class="fa-solid fa-arrow-left"></i>
-                        </button>
-                        <div class="min-w-0">
-                            <h2 id="detail-title" class="font-semibold text-lg text-slate-800 truncate">Tên File</h2>
-                            <div id="detail-date" class="text-xs text-slate-400 mt-0.5 truncate">Cập nhật lần cuối: ...</div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-1 shrink-0 ml-2 md:gap-2">
-                        <button id="btn-duplicate" class="p-2 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-colors tooltip" title="Nhân bản file (Duplicate)">
-                            <i class="fa-regular fa-copy"></i>
-                        </button>
-                        <button id="btn-download" class="p-2 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-colors tooltip" title="Tải xuống máy tính">
-                            <i class="fa-solid fa-download"></i>
-                        </button>
-                        <div class="w-px h-6 bg-slate-200 mx-1"></div>
-                        <button id="btn-edit-mode" class="p-2 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-colors" title="Chỉnh sửa">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button id="btn-delete" class="p-2 text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors" title="Xoá">
-                            <i class="fa-regular fa-trash-can"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Tabs: Xem trước / Mã nguồn -->
-                <div class="bg-slate-100 p-2 border-b border-slate-200 flex justify-center gap-1 relative z-10">
-                    <button id="tab-preview" class="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white text-indigo-600 shadow-sm">
-                        <i class="fa-regular fa-eye"></i> Xem trước
-                    </button>
-                    <button id="tab-code" class="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-slate-600 hover:bg-slate-200">
-                        <i class="fa-solid fa-code"></i> Xem Code
-                    </button>
-
-                    <!-- Nút Mở tab mới -->
-                    <button id="btn-fullscreen" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 hidden" title="Mở trong tab mới để xem đầy đủ">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        <span class="hidden sm:inline">Toàn màn hình</span>
-                    </button>
-                </div>
-
-                <div class="flex-1 overflow-hidden relative bg-white">
-                    <!-- Đã thêm các sandbox permissons -->
-                    <iframe id="preview-frame" class="w-full h-full border-0 bg-white block" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
-
-                    <div id="code-viewer" class="hidden w-full h-full p-4 overflow-auto bg-[#1e1e1e]">
-                        <pre><code id="code-display" class="text-[#d4d4d4] font-mono text-sm leading-relaxed whitespace-pre-wrap"></code></pre>
-                    </div>
-                </div>
+        <div class="p-3 border-b border-slate-200 bg-slate-50/50">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="search-input" placeholder="Tìm kiếm thông minh..." class="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"/>
             </div>
         </div>
+
+        <div id="file-list-container" class="flex-1 overflow-y-auto p-2 space-y-0.5"></div>
     </div>
 
-    <!-- Nâng cấp script thành module và tích hợp Firebase Cloud Storage -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+    <div id="main-content" class="flex-1 flex flex-col bg-slate-50/50 hidden md:flex">
 
-        const defaultFiles = [
-            {
-                id: '1',
-                title: 'Trang đích cơ bản',
-                tags: ['landing', 'template', 'basic'],
-                content: '<!DOCTYPE html>\n<html lang="vi">\n<head>\n  <meta charset="UTF-8">\n  <title>Trang đích</title>\n  <style>\n    body { font-family: sans-serif; text-align: center; padding: 50px; }\n    h1 { color: #2563eb; }\n  </style>\n</head>\n<body>\n  <h1>Chào mừng đến với trang của tôi!</h1>\n  <p>Đây là một mẫu HTML đơn giản.</p>\n</body>\n</html>',
-                updatedAt: new Date().toISOString()
-            },
-            {
-                id: '2',
-                title: 'Nút bấm hiệu ứng (Button CSS)',
-                tags: ['css', 'button', 'ui'],
-                content: '<style>\n  .btn {\n    background: #10b981;\n    color: white;\n    padding: 10px 20px;\n    border: none;\n    border-radius: 5px;\n    cursor: pointer;\n    transition: transform 0.2s;\n  }\n  .btn:hover {\n    transform: scale(1.05);\n  }\n</style>\n<button class="btn">Click me!</button>',
-                updatedAt: new Date().toISOString()
-            }
-        ];
+        <!-- VIEW: Empty -->
+        <div id="view-empty" class="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 hidden">
+            <i class="fa-regular fa-folder-open text-6xl mb-4 text-indigo-200"></i>
+            <h2 class="text-xl font-medium text-slate-600 mb-2">Chưa có file nào được chọn</h2>
+            <p class="text-center max-w-sm mb-6">Chọn một file từ danh sách bên trái hoặc tạo file HTML mới.</p>
+            <button id="btn-empty-create" class="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-2 px-4 rounded-lg font-medium shadow-sm">
+                <i class="fa-solid fa-plus text-sm"></i> Tạo file đầu tiên
+            </button>
+        </div>
 
-        let state = {
-            files: [],
-            searchQuery: '',
-            selectedId: null,
-            isEditing: false,
-            viewMode: 'preview' // 'preview' or 'code'
-        };
+        <!-- VIEW: Edit / Create -->
+        <div id="view-edit" class="flex-1 flex flex-col h-full hidden">
+            <!-- Edit header -->
+            <div class="p-3 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm z-10">
+                <div class="flex items-center gap-3">
+                    <button id="btn-edit-back" class="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md md:hidden">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h2 id="edit-header-title" class="font-semibold text-base">Tạo File Mới</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-cancel-edit" class="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Hủy</button>
+                    <button id="btn-save-file" class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm">
+                        <i class="fa-regular fa-floppy-disk"></i> Lưu lại
+                    </button>
+                </div>
+            </div>
 
-        // Firebase Vars
-        let db, auth, currentUser, appId;
+            <div class="flex-1 overflow-hidden p-3 flex flex-col">
+                <div class="flex flex-col flex-1 min-h-0 gap-2.5">
 
-        const els = {
-            sidebar: document.getElementById('sidebar'),
-            mainContent: document.getElementById('main-content'),
-            fileListContainer: document.getElementById('file-list-container'),
-            searchInput: document.getElementById('search-input'),
-
-            viewEmpty: document.getElementById('view-empty'),
-            viewEdit: document.getElementById('view-edit'),
-            viewDetail: document.getElementById('view-detail'),
-
-            editHeaderTitle: document.getElementById('edit-header-title'),
-            editTitle: document.getElementById('edit-title'),
-            editTags: document.getElementById('edit-tags'),
-            editContent: document.getElementById('edit-content'),
-            livePreviewFrame: document.getElementById('live-preview-frame'),
-
-            detailTitle: document.getElementById('detail-title'),
-            detailDate: document.getElementById('detail-date'),
-            previewFrame: document.getElementById('preview-frame'),
-            codeViewer: document.getElementById('code-viewer'),
-            codeDisplay: document.getElementById('code-display'),
-
-            tabPreview: document.getElementById('tab-preview'),
-            tabCode: document.getElementById('tab-code'),
-            btnFullscreen: document.getElementById('btn-fullscreen'),
-            cloudStatus: document.getElementById('cloud-status')
-        };
-
-        async function initApp() {
-            attachEventListeners();
-
-            // Khởi tạo Cloud Database
-            try {
-                if (typeof __firebase_config !== 'undefined') {
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    appId = typeof __app_id !== 'undefined' ? __app_id : 'smarthtml-default-app';
-                    const app = initializeApp(firebaseConfig);
-                    auth = getAuth(app);
-                    db = getFirestore(app);
-
-                    // Xác thực an toàn
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-
-                    onAuthStateChanged(auth, (user) => {
-                        currentUser = user;
-                        if (user) setupCloudSync();
-                    });
-                } else {
-                    fallbackToLocal();
-                }
-            } catch (error) {
-                console.error("Lỗi khởi tạo Cloud, quay về Local:", error);
-                fallbackToLocal();
-            }
-        }
-
-        function setupCloudSync() {
-            const filesRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'html_files');
-
-            // Lắng nghe thay đổi dữ liệu thời gian thực
-            onSnapshot(filesRef, (snapshot) => {
-                const loadedFiles = [];
-                snapshot.forEach(doc => loadedFiles.push({id: doc.id, ...doc.data()}));
-
-                // Sắp xếp file mới nhất lên đầu
-                loadedFiles.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-                if (loadedFiles.length === 0 && state.files.length === 0) {
-                    // Nếu mây trống, đẩy file mặc định lên
-                    defaultFiles.forEach(f => syncToCloud(f));
-                } else {
-                    state.files = loadedFiles;
-                    updateCloudStatus('<i class="fa-solid fa-cloud-check text-green-500"></i> Đã đồng bộ', 'bg-green-50');
-                    renderApp();
-                }
-            }, (error) => {
-                console.error("Lỗi đồng bộ:", error);
-                updateCloudStatus('<i class="fa-solid fa-cloud-xmark text-red-500"></i> Lỗi đồng bộ', 'bg-red-50');
-            });
-        }
-
-        async function syncToCloud(fileObj) {
-            if (!currentUser) return saveToLocalStorage();
-            try {
-                updateCloudStatus('<i class="fa-solid fa-cloud-arrow-up text-blue-500 animate-pulse"></i> Đang lưu mây...', 'bg-blue-50');
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'html_files', fileObj.id);
-                await setDoc(docRef, fileObj);
-            } catch (e) {
-                console.error("Không thể lưu lên mây:", e);
-                updateCloudStatus('<i class="fa-solid fa-cloud-xmark text-red-500"></i> Lỗi lưu trữ', 'bg-red-50');
-            }
-        }
-
-        async function deleteFromCloud(fileId) {
-            if (!currentUser) return;
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'html_files', fileId);
-                await deleteDoc(docRef);
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        function updateCloudStatus(html, bgClass) {
-            els.cloudStatus.innerHTML = html;
-            els.cloudStatus.className = `text-xs font-medium text-slate-600 flex justify-center mb-3 items-center gap-1 py-1.5 rounded-md border border-slate-100 transition-colors ${bgClass}`;
-        }
-
-        function fallbackToLocal() {
-            updateCloudStatus('<i class="fa-solid fa-hard-drive text-slate-500"></i> Chế độ Offline', 'bg-slate-100');
-            const stored = localStorage.getItem('smartHtmlFilesV3');
-            if (stored) {
-                try { state.files = JSON.parse(stored); } catch(e) { state.files = defaultFiles; }
-            } else {
-                state.files = [...defaultFiles];
-                saveToLocalStorage();
-            }
-            renderApp();
-        }
-
-        function saveToLocalStorage() {
-            if(currentUser) return; // Không lưu local nếu đang dùng mây
-            localStorage.setItem('smartHtmlFilesV3', JSON.stringify(state.files));
-        }
-
-        // --- CÁC HÀM RENDER ---
-
-        function renderApp() {
-            renderFileList();
-            renderMainArea();
-            updateMobileVisibility();
-        }
-
-        function renderFileList() {
-            const query = state.searchQuery.toLowerCase().trim();
-            const filtered = state.files.filter(f => {
-                if(!query) return true;
-                return f.title.toLowerCase().includes(query) ||
-                       f.tags.some(t => t.toLowerCase().includes(query)) ||
-                       f.content.toLowerCase().includes(query);
-            });
-
-            if (filtered.length === 0) {
-                els.fileListContainer.innerHTML = `
-                    <div class="p-8 text-center text-slate-400 mt-4">
-                        <i class="fa-regular fa-file-code text-4xl mb-3 opacity-30"></i>
-                        <p class="text-sm">Không tìm thấy file nào.</p>
-                    </div>`;
-                return;
-            }
-
-            els.fileListContainer.innerHTML = filtered.map(file => {
-                const isSelected = state.selectedId === file.id && !state.isEditing;
-                const activeClass = isSelected ? 'bg-indigo-50 border-indigo-200' : 'border-transparent hover:bg-slate-100';
-                const titleClass = isSelected ? 'text-indigo-900' : 'text-slate-700';
-
-                const tagsHtml = file.tags.length > 0
-                    ? `<div class="flex flex-wrap gap-1 mt-2">
-                        ${file.tags.map(tag => `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-500 font-medium">#${escapeHtml(tag)}</span>`).join('')}
-                       </div>`
-                    : '';
-
-                return `
-                    <div class="file-item p-3 rounded-lg cursor-pointer transition-all border ${activeClass}" data-id="${file.id}">
-                        <h3 class="font-medium truncate ${titleClass}">${escapeHtml(file.title)}</h3>
-                        ${tagsHtml}
+                    <!-- Row 1: Title + Folder + Tags -->
+                    <div class="flex gap-2.5">
+                        <div class="flex-1">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Tiêu đề</label>
+                            <input type="text" id="edit-title" placeholder="VD: Landing Page Sự kiện" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"/>
+                        </div>
+                        <div class="w-44">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                                <i class="fa-solid fa-folder text-amber-500 mr-1"></i>Thư mục
+                            </label>
+                            <input type="text" id="edit-folder" list="folder-datalist" placeholder="Nhập hoặc chọn..." class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"/>
+                            <datalist id="folder-datalist"></datalist>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Thẻ phân loại</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-tags absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                <input type="text" id="edit-tags" placeholder="VD: css, button, ui" class="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"/>
+                            </div>
+                        </div>
                     </div>
-                `;
-            }).join('');
 
-            document.querySelectorAll('.file-item').forEach(item => {
-                item.addEventListener('click', () => handleSelectFile(item.dataset.id));
+                    <!-- Row 2: Code + Preview -->
+                    <div class="flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0">
+
+                        <!-- ── Code column ── -->
+                        <div class="flex flex-col lg:w-[38%] min-h-[200px] lg:min-h-0">
+                            <div class="flex items-center mb-1">
+                                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
+                                    <i class="fa-solid fa-code"></i> Mã nguồn HTML/CSS/JS
+                                </label>
+                                <button id="btn-toggle-find" class="ml-auto text-xs text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition-colors" title="Tìm & Thay thế (Ctrl+H)">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </button>
+                            </div>
+
+                            <!-- Find & Replace Panel -->
+                            <div id="find-replace-panel" class="hidden bg-[#252526] rounded-t-lg px-2 py-1.5 flex flex-col gap-1 border border-b-0 border-[#454545]">
+                                <div class="flex items-center gap-1.5">
+                                    <input id="find-input" placeholder="Tìm kiếm..." autocomplete="off"
+                                        class="flex-1 bg-[#3c3c3c] text-white text-xs px-2 py-1 rounded border border-[#555] focus:border-indigo-400 focus:outline-none placeholder-slate-500"/>
+                                    <span id="find-count" class="text-[10px] text-slate-400 min-w-[36px] text-right tabular-nums">0/0</span>
+                                    <button id="btn-find-prev" class="text-slate-400 hover:text-white w-6 h-6 flex items-center justify-center rounded hover:bg-[#555] transition-colors text-xs" title="Tìm trước (Shift+Enter)">
+                                        <i class="fa-solid fa-chevron-up"></i>
+                                    </button>
+                                    <button id="btn-find-next" class="text-slate-400 hover:text-white w-6 h-6 flex items-center justify-center rounded hover:bg-[#555] transition-colors text-xs" title="Tìm tiếp (Enter)">
+                                        <i class="fa-solid fa-chevron-down"></i>
+                                    </button>
+                                    <button id="btn-close-find" class="text-slate-500 hover:text-red-400 w-6 h-6 flex items-center justify-center rounded hover:bg-[#555] transition-colors text-xs ml-0.5">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <input id="replace-input" placeholder="Thay thế bằng..." autocomplete="off"
+                                        class="flex-1 bg-[#3c3c3c] text-white text-xs px-2 py-1 rounded border border-[#555] focus:border-indigo-400 focus:outline-none placeholder-slate-500"/>
+                                    <button id="btn-replace-one" class="text-xs bg-[#4a4a4a] hover:bg-[#5a5a5a] text-slate-200 px-2.5 py-1 rounded transition-colors whitespace-nowrap">Thay</button>
+                                    <button id="btn-replace-all" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded transition-colors whitespace-nowrap">Tất cả</button>
+                                </div>
+                            </div>
+
+                            <textarea id="edit-content" spellcheck="false" placeholder="<!-- Nhập HTML, CSS hoặc JS của bạn vào đây -->"
+                                class="w-full flex-1 p-4 bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-slate-300 resize-none tab-size-2"
+                                id="find-replace-panel-hidden-check"
+                                style="border-radius: 0 0 8px 8px;"
+                            ></textarea>
+                            <!-- Stats bar -->
+                            <div id="editor-stats" class="text-[10px] text-slate-500 bg-[#1e1e1e] border-t border-[#333] px-3 py-0.5 rounded-b-lg flex gap-4 font-mono">
+                                <span id="stat-lines">Dòng: 1</span>
+                                <span id="stat-chars">Ký tự: 0</span>
+                                <span id="stat-size">0 B</span>
+                            </div>
+                        </div>
+
+                        <!-- ── Preview column ── -->
+                        <div class="flex-1 flex flex-col hidden lg:flex min-h-0">
+                            <div class="flex items-center mb-1">
+                                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
+                                    <i class="fa-solid fa-bolt text-amber-500"></i> Xem trước trực tiếp
+                                </label>
+                                <!-- Device size buttons -->
+                                <div class="ml-auto flex items-center bg-slate-100 rounded-md p-0.5 gap-0.5">
+                                    <button id="preview-size-mobile" class="preview-size-btn text-xs px-2 py-1 rounded transition-colors text-slate-500 hover:bg-slate-200" title="Mobile (375px)">
+                                        <i class="fa-solid fa-mobile-screen-button"></i>
+                                    </button>
+                                    <button id="preview-size-tablet" class="preview-size-btn text-xs px-2 py-1 rounded transition-colors text-slate-500 hover:bg-slate-200" title="Tablet (768px)">
+                                        <i class="fa-solid fa-tablet-screen-button"></i>
+                                    </button>
+                                    <button id="preview-size-desktop" class="preview-size-btn find-active-btn text-xs px-2 py-1 rounded transition-colors" title="Desktop (16:9)">
+                                        <i class="fa-solid fa-desktop"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="preview-container" class="flex-1 flex items-center justify-center bg-slate-200 rounded-lg overflow-auto p-3 min-h-0">
+                                <div id="preview-device-frame" class="preview-desktop">
+                                    <iframe id="live-preview-frame" class="w-full h-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: Detail -->
+        <div id="view-detail" class="flex-1 flex flex-col h-full overflow-hidden hidden">
+            <div class="p-3 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm z-10">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <button id="btn-detail-back" class="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md md:hidden shrink-0">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h2 id="detail-title" class="font-semibold text-base text-slate-800 truncate">Tên File</h2>
+                            <span id="detail-folder-badge" class="hidden text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium shrink-0">
+                                <i class="fa-solid fa-folder text-amber-500 mr-0.5"></i>
+                                <span id="detail-folder-name"></span>
+                            </span>
+                        </div>
+                        <div id="detail-date" class="text-xs text-slate-400 mt-0.5 truncate">Cập nhật lần cuối: ...</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0 ml-2">
+                    <button id="btn-duplicate" class="p-2 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-colors" title="Nhân bản">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                    <button id="btn-download" class="p-2 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-colors" title="Tải xuống">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                    <div class="w-px h-5 bg-slate-200 mx-0.5"></div>
+                    <button id="btn-edit-mode" class="p-2 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-colors" title="Chỉnh sửa">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button id="btn-delete" class="p-2 text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors" title="Xoá">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-100 p-2 border-b border-slate-200 flex justify-center gap-1 relative z-10">
+                <button id="tab-preview" class="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm">
+                    <i class="fa-regular fa-eye"></i> Xem trước
+                </button>
+                <button id="tab-code" class="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-code"></i> Xem Code
+                </button>
+                <button id="btn-fullscreen" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 hidden" title="Mở trong tab mới">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    <span class="hidden sm:inline text-xs">Toàn màn hình</span>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-hidden relative bg-white">
+                <iframe id="preview-frame" class="w-full h-full border-0 bg-white block" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                <div id="code-viewer" class="hidden w-full h-full p-4 overflow-auto bg-[#1e1e1e]">
+                    <pre><code id="code-display" class="text-[#d4d4d4] font-mono text-sm leading-relaxed whitespace-pre-wrap"></code></pre>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// ── Default data ──
+const defaultFiles = [
+    {
+        id: '1', title: 'Trang đích cơ bản', folder: 'Mẫu', tags: ['landing','template','basic'],
+        content: '<!DOCTYPE html>\n<html lang="vi">\n<head>\n  <meta charset="UTF-8">\n  <title>Trang đích</title>\n  <style>\n    body { font-family: sans-serif; text-align: center; padding: 50px; }\n    h1 { color: #2563eb; }\n  </style>\n</head>\n<body>\n  <h1>Chào mừng đến với trang của tôi!</h1>\n  <p>Đây là một mẫu HTML đơn giản.</p>\n</body>\n</html>',
+        updatedAt: new Date().toISOString()
+    },
+    {
+        id: '2', title: 'Nút bấm hiệu ứng', folder: 'UI Components', tags: ['css','button','ui'],
+        content: '<style>\n  body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8fafc}\n  .btn{background:#10b981;color:white;padding:12px 28px;border:none;border-radius:8px;cursor:pointer;font-size:16px;transition:transform .2s,box-shadow .2s;box-shadow:0 2px 8px rgba(16,185,129,.4)}\n  .btn:hover{transform:scale(1.07);box-shadow:0 4px 16px rgba(16,185,129,.5)}\n</style>\n<button class="btn">✨ Click me!</button>',
+        updatedAt: new Date().toISOString()
+    }
+];
+
+// ── State ──
+let state = {
+    files: [],
+    searchQuery: '',
+    selectedId: null,
+    isEditing: false,
+    viewMode: 'preview',
+    previewSize: 'desktop',
+    collapsedFolders: new Set()
+};
+
+// Find & Replace (local, not in state)
+let findMatches = [];
+let findCurrentIdx = 0;
+let findPanelOpen = false;
+
+let db, auth, currentUser, appId;
+
+// ── DOM refs ──
+const els = {
+    sidebar: document.getElementById('sidebar'),
+    mainContent: document.getElementById('main-content'),
+    fileListContainer: document.getElementById('file-list-container'),
+    searchInput: document.getElementById('search-input'),
+    viewEmpty: document.getElementById('view-empty'),
+    viewEdit: document.getElementById('view-edit'),
+    viewDetail: document.getElementById('view-detail'),
+    editHeaderTitle: document.getElementById('edit-header-title'),
+    editTitle: document.getElementById('edit-title'),
+    editFolder: document.getElementById('edit-folder'),
+    editTags: document.getElementById('edit-tags'),
+    editContent: document.getElementById('edit-content'),
+    livePreviewFrame: document.getElementById('live-preview-frame'),
+    detailTitle: document.getElementById('detail-title'),
+    detailDate: document.getElementById('detail-date'),
+    detailFolderBadge: document.getElementById('detail-folder-badge'),
+    detailFolderName: document.getElementById('detail-folder-name'),
+    previewFrame: document.getElementById('preview-frame'),
+    codeViewer: document.getElementById('code-viewer'),
+    codeDisplay: document.getElementById('code-display'),
+    tabPreview: document.getElementById('tab-preview'),
+    tabCode: document.getElementById('tab-code'),
+    btnFullscreen: document.getElementById('btn-fullscreen'),
+    cloudStatus: document.getElementById('cloud-status'),
+    findReplacePanel: document.getElementById('find-replace-panel'),
+    findInput: document.getElementById('find-input'),
+    findCount: document.getElementById('find-count'),
+    replaceInput: document.getElementById('replace-input'),
+    editorStats: document.getElementById('editor-stats')
+};
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+async function initApp() {
+    attachEventListeners();
+    try {
+        if (typeof __firebase_config !== 'undefined') {
+            const firebaseConfig = JSON.parse(__firebase_config);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'smarthtml-default-app';
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+            onAuthStateChanged(auth, user => { currentUser = user; if (user) setupCloudSync(); });
+        } else {
+            fallbackToLocal();
+        }
+    } catch (e) {
+        console.error(e);
+        fallbackToLocal();
+    }
+}
+
+function setupCloudSync() {
+    const filesRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'html_files');
+    onSnapshot(filesRef, snapshot => {
+        const loaded = [];
+        snapshot.forEach(d => loaded.push({ id: d.id, ...d.data() }));
+        loaded.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        if (loaded.length === 0 && state.files.length === 0) {
+            defaultFiles.forEach(f => syncToCloud(f));
+        } else {
+            state.files = loaded;
+            updateCloudStatus('<i class="fa-solid fa-cloud-check text-green-500"></i> Đã đồng bộ', 'bg-green-50');
+            renderApp();
+        }
+    }, err => {
+        console.error(err);
+        updateCloudStatus('<i class="fa-solid fa-cloud-xmark text-red-500"></i> Lỗi đồng bộ', 'bg-red-50');
+    });
+}
+
+async function syncToCloud(fileObj) {
+    if (!currentUser) return saveLocal();
+    try {
+        updateCloudStatus('<i class="fa-solid fa-cloud-arrow-up text-blue-500 animate-pulse"></i> Đang lưu...', 'bg-blue-50');
+        const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'html_files', fileObj.id);
+        await setDoc(ref, fileObj);
+    } catch (e) {
+        console.error(e);
+        updateCloudStatus('<i class="fa-solid fa-cloud-xmark text-red-500"></i> Lỗi lưu trữ', 'bg-red-50');
+    }
+}
+
+async function deleteFromCloud(id) {
+    if (!currentUser) return;
+    try {
+        const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'html_files', id);
+        await deleteDoc(ref);
+    } catch (e) { console.error(e); }
+}
+
+function updateCloudStatus(html, bg) {
+    els.cloudStatus.innerHTML = html;
+    els.cloudStatus.className = `text-xs font-medium flex justify-center mb-3 items-center gap-1 py-1.5 rounded-md border border-slate-100 transition-colors text-slate-600 ${bg}`;
+}
+
+function fallbackToLocal() {
+    updateCloudStatus('<i class="fa-solid fa-hard-drive text-slate-500"></i> Chế độ Offline', 'bg-slate-100');
+    const s = localStorage.getItem('smartHtmlFilesV3');
+    if (s) { try { state.files = JSON.parse(s); } catch { state.files = defaultFiles; } }
+    else { state.files = [...defaultFiles]; saveLocal(); }
+    renderApp();
+}
+
+function saveLocal() {
+    if (currentUser) return;
+    localStorage.setItem('smartHtmlFilesV3', JSON.stringify(state.files));
+}
+
+// ══════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════
+function renderApp() {
+    renderFileList();
+    renderMainArea();
+    updateMobileVisibility();
+}
+
+// ── File list with folder grouping ──
+function renderFileList() {
+    const q = state.searchQuery.toLowerCase().trim();
+    const filtered = state.files.filter(f =>
+        !q || f.title.toLowerCase().includes(q) ||
+        f.tags.some(t => t.toLowerCase().includes(q)) ||
+        (f.folder || '').toLowerCase().includes(q) ||
+        f.content.toLowerCase().includes(q)
+    );
+
+    if (filtered.length === 0) {
+        els.fileListContainer.innerHTML = `
+            <div class="p-8 text-center text-slate-400 mt-4">
+                <i class="fa-regular fa-file-code text-4xl mb-3 opacity-30"></i>
+                <p class="text-sm">Không tìm thấy file nào.</p>
+            </div>`;
+        return;
+    }
+
+    // Group by folder
+    const groups = {};
+    filtered.forEach(file => {
+        const folder = (file.folder || '').trim() || 'Chưa phân loại';
+        if (!groups[folder]) groups[folder] = [];
+        groups[folder].push(file);
+    });
+
+    const isSearching = q.length > 0;
+    const sortedFolders = Object.keys(groups).sort((a, b) => {
+        if (a === 'Chưa phân loại') return 1;
+        if (b === 'Chưa phân loại') return -1;
+        return a.localeCompare(b, 'vi');
+    });
+
+    let html = '';
+    sortedFolders.forEach(folderName => {
+        const collapsed = !isSearching && state.collapsedFolders.has(folderName);
+        const files = groups[folderName];
+        const chevron = collapsed ? 'fa-chevron-right' : 'fa-chevron-down';
+        const folderIcon = collapsed ? 'fa-solid fa-folder' : 'fa-regular fa-folder-open';
+        const folderColor = folderName === 'Chưa phân loại' ? 'text-slate-400' : 'text-amber-500';
+
+        html += `
+            <div class="folder-header flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer select-none text-slate-500 hover:bg-slate-100 transition-colors" data-folder="${escHtml(folderName)}">
+                <i class="fa-solid ${chevron} text-[10px] w-3 text-slate-400"></i>
+                <i class="${folderIcon} text-sm ${folderColor}"></i>
+                <span class="text-xs font-semibold flex-1 truncate">${escHtml(folderName)}</span>
+                <span class="text-[10px] bg-slate-200 text-slate-500 rounded-full px-1.5 py-0.5 font-medium">${files.length}</span>
+            </div>`;
+
+        if (!collapsed) {
+            files.forEach(file => {
+                const sel = state.selectedId === file.id && !state.isEditing;
+                const ac = sel ? 'bg-indigo-50 border-indigo-200' : 'border-transparent hover:bg-slate-100';
+                const tc = sel ? 'text-indigo-900' : 'text-slate-700';
+                const tagsHtml = file.tags.length > 0
+                    ? `<div class="flex flex-wrap gap-1 mt-1.5">${file.tags.map(t => `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-500 font-medium">#${escHtml(t)}</span>`).join('')}</div>`
+                    : '';
+                html += `
+                    <div class="file-item ml-5 p-2.5 rounded-lg cursor-pointer transition-all border ${ac}" data-id="${file.id}">
+                        <h3 class="font-medium truncate text-sm ${tc}">${escHtml(file.title)}</h3>
+                        ${tagsHtml}
+                    </div>`;
             });
         }
+    });
 
-        function renderMainArea() {
-            els.viewEmpty.classList.add('hidden');
-            els.viewEdit.classList.add('hidden');
-            els.viewDetail.classList.add('hidden');
+    els.fileListContainer.innerHTML = html;
 
-            if (state.isEditing) {
-                els.viewEdit.classList.remove('hidden');
-                els.editHeaderTitle.textContent = state.selectedId ? 'Sửa File' : 'Tạo File Mới';
-
-                if (state.selectedId && els.editTitle.dataset.loadedId !== state.selectedId) {
-                    const file = state.files.find(f => f.id === state.selectedId);
-                    els.editTitle.value = file.title;
-                    els.editTags.value = file.tags.join(', ');
-                    els.editContent.value = file.content;
-                    els.editTitle.dataset.loadedId = state.selectedId;
-                    updateLivePreview();
-                } else if (!state.selectedId && els.editTitle.dataset.loadedId !== 'new') {
-                    els.editTitle.value = 'File HTML mới';
-                    els.editTags.value = '';
-                    els.editContent.value = '<!-- Viết mã HTML của bạn vào đây -->';
-                    els.editTitle.dataset.loadedId = 'new';
-                    updateLivePreview();
-                }
-            }
-            else if (state.selectedId) {
-                els.viewDetail.classList.remove('hidden');
-                const file = state.files.find(f => f.id === state.selectedId);
-                if(!file) return;
-
-                els.detailTitle.textContent = file.title;
-                els.detailDate.textContent = 'Cập nhật lần cuối: ' + new Date(file.updatedAt).toLocaleString('vi-VN');
-
-                if (state.viewMode === 'preview') {
-                    els.previewFrame.classList.remove('hidden');
-                    els.codeViewer.classList.add('hidden');
-                    els.previewFrame.srcdoc = file.content;
-
-                    els.tabPreview.className = "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white text-indigo-600 shadow-sm";
-                    els.tabCode.className = "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-slate-600 hover:bg-slate-200";
-                    els.btnFullscreen.classList.remove('hidden');
-                    els.btnFullscreen.classList.add('flex');
-                } else {
-                    els.previewFrame.classList.add('hidden');
-                    els.codeViewer.classList.remove('hidden');
-                    els.codeDisplay.textContent = file.content;
-
-                    els.tabCode.className = "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white text-indigo-600 shadow-sm";
-                    els.tabPreview.className = "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-slate-600 hover:bg-slate-200";
-                    els.btnFullscreen.classList.add('hidden');
-                    els.btnFullscreen.classList.remove('flex');
-                }
-            }
-            else {
-                els.viewEmpty.classList.remove('hidden');
-            }
-        }
-
-        function updateMobileVisibility() {
-            const hasActiveView = state.selectedId || state.isEditing;
-            if (hasActiveView) {
-                els.sidebar.classList.add('hidden', 'md:flex');
-                els.mainContent.classList.remove('hidden');
-            } else {
-                els.sidebar.classList.remove('hidden', 'md:flex');
-                els.mainContent.classList.add('hidden', 'md:flex');
-            }
-        }
-
-        // --- CÁC HÀM XỬ LÝ SỰ KIỆN ---
-
-        function handleSearch(e) {
-            state.searchQuery = e.target.value;
+    document.querySelectorAll('.folder-header').forEach(h => {
+        h.addEventListener('click', () => {
+            const fn = h.dataset.folder;
+            state.collapsedFolders.has(fn) ? state.collapsedFolders.delete(fn) : state.collapsedFolders.add(fn);
             renderFileList();
-        }
+        });
+    });
+    document.querySelectorAll('.file-item').forEach(item => {
+        item.addEventListener('click', () => handleSelectFile(item.dataset.id));
+    });
+}
 
-        function handleSelectFile(id) {
-            state.selectedId = id;
-            state.isEditing = false;
-            state.viewMode = 'preview';
-            delete els.editTitle.dataset.loadedId;
-            renderApp();
-        }
+function renderMainArea() {
+    els.viewEmpty.classList.add('hidden');
+    els.viewEdit.classList.add('hidden');
+    els.viewDetail.classList.add('hidden');
 
-        function handleCreateNew() {
-            state.selectedId = null;
-            state.isEditing = true;
-            delete els.editTitle.dataset.loadedId;
-            renderApp();
-        }
+    if (state.isEditing) {
+        els.viewEdit.classList.remove('hidden');
+        els.editHeaderTitle.textContent = state.selectedId ? 'Sửa File' : 'Tạo File Mới';
+        updateFolderDatalist();
 
-        function handleEditMode() {
-            state.isEditing = true;
-            delete els.editTitle.dataset.loadedId;
-            renderApp();
-        }
-
-        function handleCancelEdit() {
-            state.isEditing = false;
-            if(!state.selectedId && state.files.length === 0) state.selectedId = null;
-            renderApp();
-        }
-
-        function handleBackToList() {
-            state.selectedId = null;
-            state.isEditing = false;
-            renderApp();
-        }
-
-        function handleSaveFile() {
-            const title = els.editTitle.value.trim();
-            if (!title) {
-                alert("Vui lòng nhập tiêu đề!");
-                els.editTitle.focus();
-                return;
-            }
-
-            const tagsStr = els.editTags.value;
-            const content = els.editContent.value;
-            const tags = tagsStr.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
-            const now = new Date().toISOString();
-
-            let targetFile;
-            if (state.selectedId) {
-                targetFile = { ...state.files.find(f => f.id === state.selectedId), title, tags, content, updatedAt: now };
-                // Nếu dùng local, cập nhật mảng. Nếu cloud, hàm sync sẽ lo liệu.
-                if(!currentUser) {
-                    const idx = state.files.findIndex(f => f.id === state.selectedId);
-                    if(idx !== -1) state.files[idx] = targetFile;
-                }
-            } else {
-                targetFile = { id: Date.now().toString(), title, tags, content, updatedAt: now };
-                state.selectedId = targetFile.id;
-                if(!currentUser) state.files.unshift(targetFile);
-            }
-
-            state.isEditing = false;
-
-            // Gọi hàm đồng bộ thay vì lưu local
-            syncToCloud(targetFile);
-
-            if(!currentUser) renderApp();
-            // Nếu có cloud, onSnapshot sẽ tự động gọi renderApp khi dữ liệu thay đổi
-        }
-
-        function handleDeleteFile() {
-            if (confirm("Bạn có chắc chắn muốn xoá file này?")) {
-                const idToDelete = state.selectedId;
-                state.selectedId = null;
-
-                if (currentUser) {
-                    deleteFromCloud(idToDelete);
-                } else {
-                    state.files = state.files.filter(f => f.id !== idToDelete);
-                    saveToLocalStorage();
-                    renderApp();
-                }
-            }
-        }
-
-        function handleDownload() {
+        if (state.selectedId && els.editTitle.dataset.loadedId !== state.selectedId) {
             const file = state.files.find(f => f.id === state.selectedId);
-            if(!file) return;
-
-            const blob = new Blob([file.content], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-
-            let safeName = file.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            a.download = `${safeName || 'html_file'}.html`;
-
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function handleOpenInNewTab() {
-            const file = state.files.find(f => f.id === state.selectedId);
-            if(!file) return;
-
-            const blob = new Blob([file.content], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-        }
-
-        function updateLivePreview() {
-            if (state.isEditing && els.livePreviewFrame) {
-                els.livePreviewFrame.srcdoc = els.editContent.value;
-            }
-        }
-
-        // Hàm loại bỏ dấu tiếng Việt
-        function removeVietnameseTones(str) {
-            return str.normalize('NFD')
-                      .replace(/[̀-ͯ]/g, '')
-                      .replace(/đ/g, 'd').replace(/Đ/g, 'D');
-        }
-
-        // Xử lý khi nhập content: Cập nhật Live Preview và trích xuất tag từ <title>
-        function handleContentInput(e) {
+            els.editTitle.value = file.title;
+            els.editFolder.value = file.folder || '';
+            els.editTags.value = file.tags.join(', ');
+            els.editContent.value = file.content;
+            els.editTitle.dataset.loadedId = state.selectedId;
             updateLivePreview();
-
-            const content = els.editContent.value;
-
-            // Lấy danh sách tag hiện tại để không bị trùng lặp
-            let currentTags = els.editTags.value.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
-            const tagSet = new Set(currentTags);
-            let tagsUpdated = false;
-
-            // Tự động bắt thẻ <title> và chia nhỏ tạo tag
-            const titleMatch = content.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-            if (titleMatch && titleMatch[1]) {
-                const rawTitle = titleMatch[1].trim();
-
-                // Cập nhật tiêu đề file (bỏ dấu tiếng Việt)
-                const extractedTitle = removeVietnameseTones(rawTitle);
-                els.editTitle.value = extractedTitle;
-
-                // Chia nhỏ title thành các tag dựa trên các dấu câu phân cách phổ biến
-                const titleParts = rawTitle.split(/[-.,|();:\[\]_]+/);
-                titleParts.forEach(part => {
-                    // Cắt khoảng trắng, bỏ dấu tiếng Việt và chuyển thành chữ thường cho Tag
-                    const cleanTag = removeVietnameseTones(part.trim()).toLowerCase();
-                    if (cleanTag && cleanTag.length > 0 && !tagSet.has(cleanTag)) {
-                        tagSet.add(cleanTag);
-                        tagsUpdated = true;
-                    }
-                });
-            }
-
-            // Tự động điền lại vào ô input nếu có tag mới
-            if (tagsUpdated) {
-                els.editTags.value = Array.from(tagSet).join(', ');
-            }
+            updateStats();
+        } else if (!state.selectedId && els.editTitle.dataset.loadedId !== 'new') {
+            els.editTitle.value = 'File HTML mới';
+            els.editFolder.value = '';
+            els.editTags.value = '';
+            els.editContent.value = '<!-- Viết mã HTML của bạn vào đây -->';
+            els.editTitle.dataset.loadedId = 'new';
+            updateLivePreview();
+            updateStats();
         }
 
-        function handleEditorTab(e) {
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                const start = this.selectionStart;
-                const end = this.selectionEnd;
-                this.value = this.value.substring(0, start) + "  " + this.value.substring(end);
-                this.selectionStart = this.selectionEnd = start + 2;
-                updateLivePreview();
-            }
+        // Fix textarea border-radius when find panel is visible
+        const open = !els.findReplacePanel.classList.contains('hidden');
+        els.editContent.style.borderRadius = open ? '0 0 0 0' : '8px 8px 0 0';
+    }
+    else if (state.selectedId) {
+        els.viewDetail.classList.remove('hidden');
+        const file = state.files.find(f => f.id === state.selectedId);
+        if (!file) return;
+
+        els.detailTitle.textContent = file.title;
+        els.detailDate.textContent = 'Cập nhật lần cuối: ' + new Date(file.updatedAt).toLocaleString('vi-VN');
+
+        const folder = (file.folder || '').trim();
+        if (folder) {
+            els.detailFolderBadge.classList.remove('hidden');
+            els.detailFolderName.textContent = folder;
+        } else {
+            els.detailFolderBadge.classList.add('hidden');
         }
 
-        function handleDuplicate() {
-            const fileToCopy = state.files.find(f => f.id === state.selectedId);
-            if(!fileToCopy) return;
-
-            const newFile = {
-                ...fileToCopy,
-                id: Date.now().toString(),
-                title: fileToCopy.title + ' (Bản sao)',
-                updatedAt: new Date().toISOString()
-            };
-
-            state.selectedId = newFile.id;
-            syncToCloud(newFile);
-
-            if(!currentUser) {
-                state.files.unshift(newFile);
-                renderApp();
-            }
+        if (state.viewMode === 'preview') {
+            els.previewFrame.classList.remove('hidden');
+            els.codeViewer.classList.add('hidden');
+            els.previewFrame.srcdoc = file.content;
+            els.tabPreview.className = "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm";
+            els.tabCode.className = "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-200";
+            els.btnFullscreen.classList.remove('hidden');
+            els.btnFullscreen.classList.add('flex');
+        } else {
+            els.previewFrame.classList.add('hidden');
+            els.codeViewer.classList.remove('hidden');
+            els.codeDisplay.textContent = file.content;
+            els.tabCode.className = "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm";
+            els.tabPreview.className = "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-200";
+            els.btnFullscreen.classList.add('hidden');
+            els.btnFullscreen.classList.remove('flex');
         }
+    }
+    else {
+        els.viewEmpty.classList.remove('hidden');
+    }
+}
 
-        function handleExport() {
-            if(state.files.length === 0) {
-                alert("Không có dữ liệu để xuất!"); return;
-            }
-            const blob = new Blob([JSON.stringify(state.files, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `smarthtml_workspace_${new Date().toISOString().slice(0,10)}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+function updateMobileVisibility() {
+    const active = state.selectedId || state.isEditing;
+    if (active) {
+        els.sidebar.classList.add('hidden', 'md:flex');
+        els.mainContent.classList.remove('hidden');
+    } else {
+        els.sidebar.classList.remove('hidden', 'md:flex');
+        els.mainContent.classList.add('hidden', 'md:flex');
+    }
+}
+
+// ── Folder datalist ──
+function updateFolderDatalist() {
+    const folders = [...new Set(state.files.map(f => (f.folder || '').trim()).filter(Boolean))];
+    document.getElementById('folder-datalist').innerHTML = folders.map(f => `<option value="${escHtml(f)}">`).join('');
+}
+
+// ══════════════════════════════════════════
+//  PREVIEW SIZE SWITCHER
+// ══════════════════════════════════════════
+function setPreviewSize(size) {
+    state.previewSize = size;
+    const frame = document.getElementById('preview-device-frame');
+    ['mobile','tablet','desktop'].forEach(s => {
+        const btn = document.getElementById(`preview-size-${s}`);
+        if (!btn) return;
+        if (s === size) {
+            btn.classList.add('find-active-btn');
+            btn.classList.remove('text-slate-500','hover:bg-slate-200');
+        } else {
+            btn.classList.remove('find-active-btn');
+            btn.classList.add('text-slate-500','hover:bg-slate-200');
         }
+    });
+    frame.className = size === 'desktop' ? 'preview-desktop'
+        : size === 'tablet' ? 'preview-tablet'
+        : 'preview-mobile';
+}
 
-        function handleImport(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+// ══════════════════════════════════════════
+//  FIND & REPLACE
+// ══════════════════════════════════════════
+function openFindReplace() {
+    findPanelOpen = true;
+    els.findReplacePanel.classList.remove('hidden');
+    els.editContent.style.borderRadius = '0 0 0 0';
+    els.findInput.focus();
+    runFind();
+}
 
-            const reader = new FileReader();
-            reader.onload = async function(event) {
-                try {
-                    const importedFiles = JSON.parse(event.target.result);
-                    if (Array.isArray(importedFiles)) {
-                        const isOverwrite = confirm(`Tìm thấy ${importedFiles.length} file. Bạn muốn XÓA DỮ LIỆU CŨ và thay thế toàn bộ không?\n\n(Chọn [Cancel] để GỘP chung các file này vào danh sách hiện tại)`);
+function closeFindReplace() {
+    findPanelOpen = false;
+    els.findReplacePanel.classList.add('hidden');
+    els.editContent.style.borderRadius = '8px 8px 0 0';
+    findMatches = [];
+    findCurrentIdx = 0;
+    els.findCount.textContent = '0/0';
+    els.editContent.focus();
+}
 
-                        state.selectedId = null;
-                        state.isEditing = false;
+function runFind() {
+    const q = els.findInput.value;
+    const content = els.editContent.value;
+    findMatches = [];
+    findCurrentIdx = 0;
+    if (!q) { els.findCount.textContent = '0/0'; return; }
+    const lc = content.toLowerCase(), lq = q.toLowerCase();
+    let i = 0;
+    while ((i = lc.indexOf(lq, i)) !== -1) {
+        findMatches.push({ start: i, end: i + q.length });
+        i++;
+    }
+    updateFindCount();
+    if (findMatches.length) selectMatch(0);
+}
 
-                        if (currentUser) {
-                            updateCloudStatus('<i class="fa-solid fa-cloud-arrow-up animate-pulse"></i> Đang tải dữ liệu lên...', 'bg-blue-50');
-                            if (isOverwrite) {
-                                // Nếu chọn ghi đè, xóa hết file cũ trước (trên mây)
-                                for (let f of state.files) await deleteFromCloud(f.id);
-                            }
-                            // Đẩy từng file lên mây
-                            for (let f of importedFiles) {
-                                const newF = isOverwrite ? f : {...f, id: Date.now().toString() + Math.random().toString(36).substr(2, 5)};
-                                await syncToCloud(newF);
-                            }
-                            alert("Đã đẩy dữ liệu lên Đám mây thành công!");
-                        } else {
-                            if (isOverwrite) {
-                                state.files = importedFiles;
-                            } else {
-                                const merged = importedFiles.map(f => ({
-                                    ...f, id: Date.now().toString() + Math.random().toString(36).substr(2, 5)
-                                }));
-                                state.files = [...merged, ...state.files];
-                            }
-                            saveToLocalStorage();
-                            renderApp();
-                            alert("Nhập dữ liệu Workspace thành công!");
-                        }
-                    } else {
-                        alert("Định dạng file không được hỗ trợ!");
-                    }
-                } catch(error) {
-                    alert("File bị lỗi hoặc không phải là file JSON hợp lệ!");
+function updateFindCount() {
+    els.findCount.textContent = findMatches.length
+        ? `${findCurrentIdx + 1}/${findMatches.length}`
+        : '0/0';
+}
+
+function selectMatch(idx) {
+    if (!findMatches.length) return;
+    findCurrentIdx = (idx + findMatches.length) % findMatches.length;
+    const m = findMatches[findCurrentIdx];
+    els.editContent.focus();
+    els.editContent.setSelectionRange(m.start, m.end);
+    const lines = els.editContent.value.substring(0, m.start).split('\n').length;
+    const total = els.editContent.value.split('\n').length;
+    els.editContent.scrollTop = ((lines - 1) / Math.max(total, 1)) * els.editContent.scrollHeight;
+    updateFindCount();
+}
+
+function findNext() { selectMatch(findCurrentIdx + 1); }
+function findPrev() { selectMatch(findCurrentIdx - 1); }
+
+function replaceOne() {
+    if (!findMatches.length) return;
+    const m = findMatches[findCurrentIdx];
+    const rv = els.replaceInput.value;
+    const v = els.editContent.value;
+    els.editContent.value = v.substring(0, m.start) + rv + v.substring(m.end);
+    updateLivePreview(); updateStats();
+    runFind();
+}
+
+function replaceAll() {
+    const q = els.findInput.value;
+    if (!q) return;
+    const rv = els.replaceInput.value;
+    const count = findMatches.length;
+    els.editContent.value = els.editContent.value.replace(
+        new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), rv
+    );
+    updateLivePreview(); updateStats();
+    findMatches = [];
+    els.findCount.textContent = `✓ ${count} thay`;
+    setTimeout(runFind, 1200);
+}
+
+// ══════════════════════════════════════════
+//  STATS BAR
+// ══════════════════════════════════════════
+function updateStats() {
+    const v = els.editContent.value;
+    const lines = v ? v.split('\n').length : 0;
+    const bytes = new Blob([v]).size;
+    const sizeStr = bytes < 1024 ? `${bytes} B` : `${(bytes/1024).toFixed(1)} KB`;
+    document.getElementById('stat-lines').textContent = `Dòng: ${lines}`;
+    document.getElementById('stat-chars').textContent = `${v.length.toLocaleString()} ký tự`;
+    document.getElementById('stat-size').textContent = sizeStr;
+}
+
+// ══════════════════════════════════════════
+//  HANDLERS
+// ══════════════════════════════════════════
+function handleSearch(e) { state.searchQuery = e.target.value; renderFileList(); }
+
+function handleSelectFile(id) {
+    state.selectedId = id; state.isEditing = false; state.viewMode = 'preview';
+    delete els.editTitle.dataset.loadedId;
+    renderApp();
+}
+
+function handleCreateNew() {
+    state.selectedId = null; state.isEditing = true;
+    delete els.editTitle.dataset.loadedId;
+    renderApp();
+}
+
+function handleEditMode() {
+    state.isEditing = true;
+    delete els.editTitle.dataset.loadedId;
+    renderApp();
+}
+
+function handleCancelEdit() {
+    state.isEditing = false;
+    closeFindReplace();
+    renderApp();
+}
+
+function handleBackToList() {
+    state.selectedId = null; state.isEditing = false;
+    closeFindReplace();
+    renderApp();
+}
+
+function handleSaveFile() {
+    const title = els.editTitle.value.trim();
+    if (!title) { alert("Vui lòng nhập tiêu đề!"); els.editTitle.focus(); return; }
+    const folder = els.editFolder.value.trim();
+    const tags = els.editTags.value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+    const content = els.editContent.value;
+    const now = new Date().toISOString();
+    let target;
+    if (state.selectedId) {
+        target = { ...state.files.find(f => f.id === state.selectedId), title, folder, tags, content, updatedAt: now };
+        if (!currentUser) { const i = state.files.findIndex(f => f.id === state.selectedId); if (i !== -1) state.files[i] = target; }
+    } else {
+        target = { id: Date.now().toString(), title, folder, tags, content, updatedAt: now };
+        state.selectedId = target.id;
+        if (!currentUser) state.files.unshift(target);
+    }
+    state.isEditing = false;
+    closeFindReplace();
+    syncToCloud(target);
+    if (!currentUser) renderApp();
+}
+
+function handleDeleteFile() {
+    if (!confirm("Bạn có chắc chắn muốn xoá file này?")) return;
+    const id = state.selectedId;
+    state.selectedId = null;
+    if (currentUser) {
+        deleteFromCloud(id);
+    } else {
+        state.files = state.files.filter(f => f.id !== id);
+        saveLocal(); renderApp();
+    }
+}
+
+function handleDownload() {
+    const file = state.files.find(f => f.id === state.selectedId); if (!file) return;
+    const blob = new Blob([file.content], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${file.title.replace(/[^a-z0-9]/gi,'_').toLowerCase() || 'html_file'}.html`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function handleOpenInNewTab() {
+    const file = state.files.find(f => f.id === state.selectedId); if (!file) return;
+    const blob = new Blob([file.content], { type: 'text/html;charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
+}
+
+function updateLivePreview() {
+    if (state.isEditing && els.livePreviewFrame) els.livePreviewFrame.srcdoc = els.editContent.value;
+}
+
+function removeVN(str) {
+    return str.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g,'d').replace(/Đ/g,'D');
+}
+
+function handleContentInput() {
+    updateLivePreview();
+    updateStats();
+    if (findPanelOpen) runFind();
+
+    const content = els.editContent.value;
+    const tagSet = new Set(els.editTags.value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean));
+    let updated = false;
+    const tm = content.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    if (tm && tm[1]) {
+        const raw = tm[1].trim();
+        els.editTitle.value = removeVN(raw);
+        raw.split(/[-.,|();:\[\]_]+/).forEach(p => {
+            const ct = removeVN(p.trim()).toLowerCase();
+            if (ct && !tagSet.has(ct)) { tagSet.add(ct); updated = true; }
+        });
+        if (updated) els.editTags.value = [...tagSet].join(', ');
+    }
+}
+
+function handleEditorTab(e) {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const s = this.selectionStart, end = this.selectionEnd;
+        this.value = this.value.substring(0, s) + '  ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = s + 2;
+        updateLivePreview();
+    }
+}
+
+function handleDuplicate() {
+    const f = state.files.find(f => f.id === state.selectedId); if (!f) return;
+    const nf = { ...f, id: Date.now().toString(), title: f.title + ' (Bản sao)', updatedAt: new Date().toISOString() };
+    state.selectedId = nf.id;
+    syncToCloud(nf);
+    if (!currentUser) { state.files.unshift(nf); renderApp(); }
+}
+
+function handleExport() {
+    if (!state.files.length) { alert("Không có dữ liệu để xuất!"); return; }
+    const blob = new Blob([JSON.stringify(state.files, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `smarthtml_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function handleImport(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+        try {
+            const imported = JSON.parse(ev.target.result);
+            if (!Array.isArray(imported)) { alert("Định dạng không hợp lệ!"); return; }
+            const overwrite = confirm(`Tìm thấy ${imported.length} file. XÓA DỮ LIỆU CŨ và thay thế?\n\n(Cancel = GỘP vào danh sách hiện tại)`);
+            state.selectedId = null; state.isEditing = false;
+            if (currentUser) {
+                updateCloudStatus('<i class="fa-solid fa-cloud-arrow-up animate-pulse"></i> Đang tải lên...', 'bg-blue-50');
+                if (overwrite) for (const f of state.files) await deleteFromCloud(f.id);
+                for (const f of imported) {
+                    const nf = overwrite ? f : { ...f, id: Date.now().toString() + Math.random().toString(36).substr(2,5) };
+                    await syncToCloud(nf);
                 }
-                e.target.value = '';
-            };
-            reader.readAsText(file);
+                alert("Đã đẩy lên Đám mây thành công!");
+            } else {
+                if (overwrite) {
+                    state.files = imported;
+                } else {
+                    const merged = imported.map(f => ({ ...f, id: Date.now().toString() + Math.random().toString(36).substr(2,5) }));
+                    state.files = [...merged, ...state.files];
+                }
+                saveLocal(); renderApp();
+                alert("Nhập dữ liệu thành công!");
+            }
+        } catch { alert("File bị lỗi hoặc không phải JSON hợp lệ!"); }
+        e.target.value = '';
+    };
+    reader.readAsText(file);
+}
+
+// ══════════════════════════════════════════
+//  EVENT LISTENERS
+// ══════════════════════════════════════════
+function attachEventListeners() {
+    document.getElementById('btn-create-new').addEventListener('click', handleCreateNew);
+    els.searchInput.addEventListener('input', handleSearch);
+    document.getElementById('btn-empty-create').addEventListener('click', handleCreateNew);
+    document.getElementById('btn-edit-back').addEventListener('click', handleBackToList);
+    document.getElementById('btn-cancel-edit').addEventListener('click', handleCancelEdit);
+    document.getElementById('btn-save-file').addEventListener('click', handleSaveFile);
+    document.getElementById('btn-detail-back').addEventListener('click', handleBackToList);
+    document.getElementById('btn-edit-mode').addEventListener('click', handleEditMode);
+    document.getElementById('btn-delete').addEventListener('click', handleDeleteFile);
+    document.getElementById('btn-download').addEventListener('click', handleDownload);
+    els.tabPreview.addEventListener('click', () => { state.viewMode = 'preview'; renderMainArea(); });
+    els.tabCode.addEventListener('click', () => { state.viewMode = 'code'; renderMainArea(); });
+    els.btnFullscreen.addEventListener('click', handleOpenInNewTab);
+    document.getElementById('btn-duplicate').addEventListener('click', handleDuplicate);
+    document.getElementById('btn-export').addEventListener('click', handleExport);
+    document.getElementById('input-import').addEventListener('change', handleImport);
+
+    els.editContent.addEventListener('input', handleContentInput);
+    els.editContent.addEventListener('keydown', handleEditorTab);
+
+    // Preview size buttons
+    ['mobile','tablet','desktop'].forEach(s => {
+        document.getElementById(`preview-size-${s}`).addEventListener('click', () => setPreviewSize(s));
+    });
+
+    // Find & Replace
+    document.getElementById('btn-toggle-find').addEventListener('click', () => {
+        findPanelOpen ? closeFindReplace() : openFindReplace();
+    });
+    document.getElementById('btn-close-find').addEventListener('click', closeFindReplace);
+    document.getElementById('btn-find-next').addEventListener('click', findNext);
+    document.getElementById('btn-find-prev').addEventListener('click', findPrev);
+    document.getElementById('btn-replace-one').addEventListener('click', replaceOne);
+    document.getElementById('btn-replace-all').addEventListener('click', replaceAll);
+    els.findInput.addEventListener('input', runFind);
+    els.findInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? findPrev() : findNext(); }
+        if (e.key === 'Escape') closeFindReplace();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'h' || e.key === 'f') && state.isEditing) {
+            e.preventDefault();
+            findPanelOpen && e.key === 'h' ? closeFindReplace() : openFindReplace();
         }
+    });
+}
 
-        function attachEventListeners() {
-            document.getElementById('btn-create-new').addEventListener('click', handleCreateNew);
-            els.searchInput.addEventListener('input', handleSearch);
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
 
-            document.getElementById('btn-empty-create').addEventListener('click', handleCreateNew);
-
-            document.getElementById('btn-edit-back').addEventListener('click', handleBackToList);
-            document.getElementById('btn-cancel-edit').addEventListener('click', handleCancelEdit);
-            document.getElementById('btn-save-file').addEventListener('click', handleSaveFile);
-
-            document.getElementById('btn-detail-back').addEventListener('click', handleBackToList);
-            document.getElementById('btn-edit-mode').addEventListener('click', handleEditMode);
-            document.getElementById('btn-delete').addEventListener('click', handleDeleteFile);
-            document.getElementById('btn-download').addEventListener('click', handleDownload);
-
-            els.tabPreview.addEventListener('click', () => { state.viewMode = 'preview'; renderMainArea(); });
-            els.tabCode.addEventListener('click', () => { state.viewMode = 'code'; renderMainArea(); });
-
-            els.btnFullscreen.addEventListener('click', handleOpenInNewTab);
-
-            document.getElementById('btn-duplicate').addEventListener('click', handleDuplicate);
-            document.getElementById('btn-export').addEventListener('click', handleExport);
-            document.getElementById('input-import').addEventListener('change', handleImport);
-
-            els.editContent.addEventListener('input', handleContentInput);
-            els.editContent.addEventListener('keydown', handleEditorTab);
-        }
-
-        function escapeHtml(unsafe) {
-            return unsafe
-                 .replace(/&/g, "&amp;")
-                 .replace(/</g, "&lt;")
-                 .replace(/>/g, "&gt;")
-                 .replace(/"/g, "&quot;")
-                 .replace(/'/g, "&#039;");
-        }
-
-        // Khởi động
-        document.addEventListener('DOMContentLoaded', initApp);
-    </script>
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
 </body>
 </html>
